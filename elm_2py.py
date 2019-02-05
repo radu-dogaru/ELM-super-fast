@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Last update: June 6, 2018 
+
+Last update  February 5, 2019 
+Training for the case less samples than neurons implemented 
+Multiquadric nonlinearity added 
+
+Note: This ELM is particularly suited for low-complexity 
+implementations, with 2 bit quantization on the first layer 
+and 8-16 on the output layer 
+Also the recommended nonlinearity is 3 (absolute value)
+somhow replacing the multiquadric 
+
+First release: June 6, 2018 
 @authors: radu.dogaru@upb.ro ioana.dogaru@upb.ro
  
 Implements ELM training using datasets available in Matlab format 
@@ -64,8 +75,12 @@ def elmTrain_optim(X, Y, h_Neurons, C , tip):
       H=hidden_nonlin(hid_inp,tip)
       
       # Moore - Penrose computation of output weights (outW) layer 
-      outW = scipy.linalg.solve(np.eye(h_Neurons)/C+np.dot(H,np.transpose(H)), np.dot(H,np.transpose(targets)))     
-      
+      if h_Neurons<Ntr:
+          print('LLL - Less neurons than training samples')
+          outW = scipy.linalg.solve(np.eye(h_Neurons)/C+np.dot(H,H.T), np.dot(H,targets.T))     
+      else:
+          print('MMM - More neurons than training samples')
+          outW = np.dot(H,scipy.linalg.solve(np.eye(Ntr)/C+np.dot(H.T,H), targets.T))
       return inW, outW 
 
 # implements the ELM training procedure with weight quantization       
@@ -93,10 +108,15 @@ def elmTrain_fix( X, Y, h_Neurons, C , tip, ni):
       #  Compute hidden layer 
       hid_inp = np.dot(inW, X)
       H=hidden_nonlin(hid_inp,tip)
-      
+     
       # Moore - Penrose computation of output weights (outW) layer 
-      outW = scipy.linalg.solve(np.eye(h_Neurons)/C+np.dot(H,np.transpose(H)), np.dot(H,np.transpose(targets)))     
-      
+      if h_Neurons<Ntr:
+          print('LLL - Less neurons than training samples')
+          outW = scipy.linalg.solve(np.eye(h_Neurons)/C+np.dot(H,H.T), np.dot(H,targets.T))     
+      else:
+          print('MMM - More neurons than training samples')
+          outW = np.dot(H,scipy.linalg.solve(np.eye(Ntr)/C+np.dot(H.T,H), targets.T))
+     
       return inW, outW 
       
 
@@ -114,10 +134,12 @@ def elmPredict_optim( X, inW, outW, tip):
 #  RUNNING EXAMPLE 
 #================================================================================
 # parameters 
+
+# parameters 
 nume='optd64' # Database (Matlab format - similar to what is supported by the LIBSVM library)
 #nume='mnist' # MNIST dataset 
 nr_neuroni=2000 # Proposed number of neurons on the hidden layer 
-C=0.1 # Regularization coefficient C  
+C=0.100 # Regularization coefficient C  
 tip=3 # Nonlinearity of the hidden layer  
 nb_in=2;  # 0 = float; x - represents weights on a finite x number of bits 
 nb_out=0; # same as above but for the output layer
